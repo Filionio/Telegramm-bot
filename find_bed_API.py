@@ -13,7 +13,7 @@ def find_rapid(filter_user):
 	querystring["adults"] = filter_user[3]
 	querystring["page"] = filter_user[4]
 	headers = {
-		"X-RapidAPI-Key": "cc8187fcbfmsha5c244a3402267bp1d949cjsn6b73cec4391f",
+		"X-RapidAPI-Key": "d84165b781msh290cf99c394ad2dp19236ajsn6b54eeb5c463",
 		"X-RapidAPI-Host": "airbnb13.p.rapidapi.com"
 	}
 
@@ -21,9 +21,9 @@ def find_rapid(filter_user):
 	data = json.loads(response.text)
 	return pages(data,filter_user[4])
 
-def pages(data,pages):
+def pages(data,total_pages):
 	'''Функция получает ссылки и картинки номеров гостиниц из API сайта
 	и возвращает их в функцию find_rapid в виде генератора'''
-	for page in range(int(pages)):
+	for page in range(int(total_pages)):
 		yield data['results'][page]['url'], data['results'][page]['images'][1:3]
 

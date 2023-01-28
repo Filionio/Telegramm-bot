@@ -1,8 +1,13 @@
-
+import json
 import telebot
 import config
 from telebot import types
 import time
+import requests
+from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext
+
+
+
 
 bot = telebot.TeleBot(config.token)
 
@@ -94,14 +99,44 @@ def choose_items(message):
                 toc = time.perf_counter()
                 bot.send_message(message.chat.id,f"Вычисление заняло {toc - tic:0.4f} секунд")
 
-
-
             filter_user = list()
             city_find(message)
 
 
         elif message.text == "🗺Искать ночлег ближайший🗺":
-            bot.send_message(message.chat.id, "Успешно")
+            @bot.message_handler(commands=["geo"])
+            def geo(message):
+                keyboard = types.ReplyKeyboardMarkup(row_width=1, resize_keyboard=True)
+                button_geo = types.KeyboardButton(text="Отправить местоположение", request_location=True)
+                keyboard.add(button_geo)
+                bot.send_message(message.chat.id,"🤓Нажми на кнопку и передай мне свое местоположение🤓"
+                                                 "\n🗺Либо отправь мне точку на карте вручную🗺",reply_markup=keyboard)
+                bot.register_next_step_handler(message,location)
+
+            @bot.message_handler(content_types=["location"])
+            def location(message):
+                import find_bed_geo
+                if message.location is not None:
+                    bot.send_message(message.chat.id, message.location)
+                    bot.send_message(message.chat.id,f"Ваша широта: {round(message.location.latitude,2)}; Ваша долгота: {round(message.location.longitude,2)}")
+                    latitude = round(message.location.latitude,2)
+                    longitude = round(message.location.longitude, 2)
+                    result_site,result_image = find_bed_geo.find_geo(latitude,longitude)
+                    tic = time.perf_counter()
+                    for index, page in enumerate(result_site):
+                        for image in result_image[index]:
+                            bot.send_message(message.chat.id, image)
+                        bot.send_message(message.chat.id, page)
+                        bot.send_message(message.chat.id, f'Вариант номер: {index + 1}\n')
+                    toc = time.perf_counter()
+                    bot.send_message(message.chat.id, f"Вычисление заняло {toc - tic:0.4f} секунд")
+                else:
+                    bot.send_message(message.chat.id,'Неправильно введены данные')
+
+            geo(message)
+
+
+
 
         elif message.text == "🤓История запросов🤓":
             bot.send_message(message.chat.id, "Успешно")
