@@ -117,7 +117,6 @@ def choose_items(message):
             def location(message):
                 import find_bed_geo
                 if message.location is not None:
-                    bot.send_message(message.chat.id, message.location)
                     bot.send_message(message.chat.id,f"Ваша широта: {round(message.location.latitude,2)}; Ваша долгота: {round(message.location.longitude,2)}")
                     latitude = round(message.location.latitude,2)
                     longitude = round(message.location.longitude, 2)
@@ -130,6 +129,19 @@ def choose_items(message):
                         bot.send_message(message.chat.id, f'Вариант номер: {index + 1}\n')
                     toc = time.perf_counter()
                     bot.send_message(message.chat.id, f"Вычисление заняло {toc - tic:0.4f} секунд")
+                    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+                    item1 = types.KeyboardButton("⛺Искать ночлег по фильтру🏕")
+                    item2 = types.KeyboardButton("🗺Искать ночлег ближайший🗺")
+                    item3 = types.KeyboardButton("🤓История запросов🤓")
+                    item4 = types.KeyboardButton("❓Помощь❓")
+                    markup.add(item1, item2, item3, item4)
+                    bot.send_message(message.chat.id,"!Продолжите поиск!"
+                                                     "\n1- '⛺Искать ночлег по фильтру🏕'"
+                                                      "\n2- '🗺Искать ночлег ближайший🗺'"
+                                                      "\n3- '🤓История запросов🤓'"
+                                                      "\n4- '❓Помощь❓'",
+                                     parse_mode="html", reply_markup=markup)
+                    choose_items(message)
                 else:
                     bot.send_message(message.chat.id,'Неправильно введены данные')
 
