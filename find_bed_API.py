@@ -24,6 +24,9 @@ def find_rapid(filter_user):
 def pages(data,total_pages):
 	'''Функция получает ссылки и картинки номеров гостиниц из API сайта
 	и возвращает их в функцию find_rapid в виде генератора'''
+	links = []
+	images = []
 	for page in range(int(total_pages)):
-		yield data['results'][page]['url'], data['results'][page]['images'][1:3]
-
+		links.append(data['results'][page]['url'])
+		images.append(data['results'][page]['images'][1:3])
+	return links,images

@@ -117,31 +117,57 @@ def choose_items(message):
             def location(message):
                 import find_bed_geo
                 if message.location is not None:
+                    filter_us = []
                     bot.send_message(message.chat.id,f"Ваша широта: {round(message.location.latitude,2)}; Ваша долгота: {round(message.location.longitude,2)}")
                     latitude = round(message.location.latitude,2)
                     longitude = round(message.location.longitude, 2)
-                    result_site,result_image = find_bed_geo.find_geo(latitude,longitude)
-                    tic = time.perf_counter()
-                    for index, page in enumerate(result_site):
-                        for image in result_image[index]:
-                            bot.send_message(message.chat.id, image)
-                        bot.send_message(message.chat.id, page)
-                        bot.send_message(message.chat.id, f'Вариант номер: {index + 1}\n')
-                    toc = time.perf_counter()
-                    bot.send_message(message.chat.id, f"Вычисление заняло {toc - tic:0.4f} секунд")
-                    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-                    item1 = types.KeyboardButton("⛺Искать ночлег по фильтру🏕")
-                    item2 = types.KeyboardButton("🗺Искать ночлег ближайший🗺")
-                    item3 = types.KeyboardButton("🤓История запросов🤓")
-                    item4 = types.KeyboardButton("❓Помощь❓")
-                    markup.add(item1, item2, item3, item4)
-                    bot.send_message(message.chat.id,"!Продолжите поиск!"
-                                                     "\n1- '⛺Искать ночлег по фильтру🏕'"
-                                                      "\n2- '🗺Искать ночлег ближайший🗺'"
-                                                      "\n3- '🤓История запросов🤓'"
-                                                      "\n4- '❓Помощь❓'",
-                                     parse_mode="html", reply_markup=markup)
-                    choose_items(message)
+                    def start_filter(message):
+                        bot.send_message(message.chat.id,'Сколько предложений вам вывести?(От 1 до 8)')
+                        bot.register_next_step_handler(message,total_site)
+                    def total_site(message):
+                        nonlocal filter_us
+                        filter_us.append(message.text)
+                        bot.send_message(message.chat.id,'Когда планируете заехать?(Например,2023-09-10)')
+                        bot.register_next_step_handler(message, arrival_f)
+
+                    def arrival_f(message):
+                        nonlocal filter_us
+                        filter_us.append(message.text)
+                        bot.send_message(message.chat.id,'Когда планируете выехать?(Например,2023-09-13)')
+                        bot.register_next_step_handler(message, departure_f)
+
+                    def departure_f(message):
+                        nonlocal filter_us
+                        filter_us.append(message.text)
+                        bot.send_message(message.chat.id,"Для вывода напишите что-нибудь")
+                        bot.register_next_step_handler(message, user_find)
+
+                    def user_find(message):
+                        nonlocal filter_us
+                        result_site,result_image = find_bed_geo.find_geo(latitude,longitude,filter_us)
+                        tic = time.perf_counter()
+                        for index, page in enumerate(result_site):
+                            for image in result_image[index]:
+                                bot.send_message(message.chat.id, image)
+                            bot.send_message(message.chat.id, page)
+                            bot.send_message(message.chat.id, f'Вариант номер: {index + 1}\n')
+                        toc = time.perf_counter()
+                        bot.send_message(message.chat.id, f"Вычисление заняло {toc - tic:0.4f} секунд")
+                        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+                        item1 = types.KeyboardButton("⛺Искать ночлег по фильтру🏕")
+                        item2 = types.KeyboardButton("🗺Искать ночлег ближайший🗺")
+                        item3 = types.KeyboardButton("🤓История запросов🤓")
+                        item4 = types.KeyboardButton("❓Помощь❓")
+                        markup.add(item1, item2, item3, item4)
+                        bot.send_message(message.chat.id,"!Продолжите поиск!"
+                                                         "\n1- '⛺Искать ночлег по фильтру🏕'"
+                                                          "\n2- '🗺Искать ночлег ближайший🗺'"
+                                                          "\n3- '🤓История запросов🤓'"
+                                                          "\n4- '❓Помощь❓'",
+                                         parse_mode="html", reply_markup=markup)
+                        choose_items(message)
+
+                    start_filter(message)
                 else:
                     bot.send_message(message.chat.id,'Неправильно введены данные')
 
@@ -151,7 +177,8 @@ def choose_items(message):
 
 
         elif message.text == "🤓История запросов🤓":
-            bot.send_message(message.chat.id, "Успешно")
+            import sqlite3
+            bot = config.token
 
         elif message.text == "❓Помощь❓":
             bot.send_message(message.chat.id, "Сведения о командах\n"
