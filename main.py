@@ -8,7 +8,6 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, filters, Callb
 
 
 
-
 bot = telebot.TeleBot(config.token)
 
 @bot.message_handler(commands=["start"])
@@ -38,6 +37,7 @@ def welcom(message):
 
 @bot.message_handler(content_types=["text"])
 def choose_items(message):
+    global bot
     """Функция кнопок
     После старта пользователь выбирает одну из доступных кнопок и выводит нужное на экран"""
     if message.chat.type == "private":
@@ -104,6 +104,7 @@ def choose_items(message):
 
 
         elif message.text == "🗺Искать ночлег ближайший🗺":
+            global bot
             @bot.message_handler(commands=["geo"])
             def geo(message):
                 keyboard = types.ReplyKeyboardMarkup(row_width=1, resize_keyboard=True)
