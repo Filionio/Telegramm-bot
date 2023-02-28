@@ -1,13 +1,18 @@
-import json
+
 import telebot
 import config
 from telebot import types
 import time
-import requests
-from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext
+import sqlite3
+import tracemalloc
+import asyncio
+from aiogram.dispatcher.filters import Command
 
+from sql import add,hist
 
-
+tracemalloc.start()
+filter_user = list()
+filter_us = []
 bot = telebot.TeleBot(config.token)
 
 @bot.message_handler(commands=["start"])
@@ -35,6 +40,8 @@ def welcom(message):
                                      "\n4- '❓Помощь❓'",
                      parse_mode="html", reply_markup=markup)
 
+
+
 @bot.message_handler(content_types=["text"])
 def choose_items(message):
     global bot
@@ -42,7 +49,7 @@ def choose_items(message):
     После старта пользователь выбирает одну из доступных кнопок и выводит нужное на экран"""
     if message.chat.type == "private":
         if message.text == "⛺Искать ночлег по фильтру🏕":
-            filter_user = list()
+
 
             def city_find(message):
                 """Если пользователь выбрал 1 кнопку, то запрашиваются данные для фильтра и поиску по сайту AirBnb.ru"""
@@ -51,34 +58,34 @@ def choose_items(message):
 
 
             def arrival_date(message):
-                nonlocal filter_user
+                global filter_user
                 filter_user.append(message.text)
                 bot.send_message(message.chat.id, "Напишите дату заезда"
                                                   "\n(год, месяц, день, например, 2023-09-10)")
                 bot.register_next_step_handler(message, departure_date)
 
             def departure_date(message):
-                nonlocal filter_user
+                global filter_user
                 filter_user.append(message.text)
                 bot.send_message(message.chat.id, "Напишите дату выезда"
                                                   "\n(год, месяц, день, например, 2023-09-13)")
                 bot.register_next_step_handler(message, number_people)
 
             def number_people(message):
-                nonlocal filter_user
+                global filter_user
                 filter_user.append(message.text)
                 bot.send_message(message.chat.id, "Напишите количество человек (например, 2)")
                 bot.register_next_step_handler(message, offers_screen)
 
             def offers_screen(message):
-                nonlocal filter_user
+                global filter_user
                 filter_user.append(message.text)
                 bot.send_message(message.chat.id, "Напишите сколько предложений ночлегов вам вывести на экран?"
                                                   "\n от 1 до 8")
                 bot.register_next_step_handler(message,output_result)
 
             def output_result(message):
-                nonlocal filter_user
+                global filter_user
                 filter_user.append(message.text)
                 bot.send_message(message.chat.id,'Для вывода результата напишите что-нибудь')
                 bot.register_next_step_handler(message,API_find)
@@ -87,7 +94,7 @@ def choose_items(message):
                 """Функция поиска
                 Заданные параметры отправляются для поиска отеля и возвращают ссылки на отели, а также их 2 фотографии
                 *также ведется подсчет работы функции*"""
-                nonlocal filter_user
+                global filter_user
                 import find_bed_API
                 result_site,result_image = find_bed_API.find_rapid(filter_user)
                 tic = time.perf_counter()
@@ -98,13 +105,18 @@ def choose_items(message):
                     bot.send_message(message.chat.id,f'Вариант номер: {index+1}\n')
                 toc = time.perf_counter()
                 bot.send_message(message.chat.id,f"Вычисление заняло {toc - tic:0.4f} секунд")
+                bot.register_next_step_handler(message,asyncio.run(add_cmd(message)))
 
-            filter_user = list()
+            async def add_cmd(message):
+                s = filter_user
+                await add(s)
+                bot.send_message(message.chat.id,'История успешно добавлена!!!')
+            global filter_user
             city_find(message)
 
 
         elif message.text == "🗺Искать ночлег ближайший🗺":
-            global bot
+
             @bot.message_handler(commands=["geo"])
             def geo(message):
                 keyboard = types.ReplyKeyboardMarkup(row_width=1, resize_keyboard=True)
@@ -118,7 +130,7 @@ def choose_items(message):
             def location(message):
                 import find_bed_geo
                 if message.location is not None:
-                    filter_us = []
+                    global filter_us
                     bot.send_message(message.chat.id,f"Ваша широта: {round(message.location.latitude,2)}; Ваша долгота: {round(message.location.longitude,2)}")
                     latitude = round(message.location.latitude,2)
                     longitude = round(message.location.longitude, 2)
@@ -126,25 +138,25 @@ def choose_items(message):
                         bot.send_message(message.chat.id,'Сколько предложений вам вывести?(От 1 до 8)')
                         bot.register_next_step_handler(message,total_site)
                     def total_site(message):
-                        nonlocal filter_us
+                        global filter_us
                         filter_us.append(message.text)
                         bot.send_message(message.chat.id,'Когда планируете заехать?(Например,2023-09-10)')
                         bot.register_next_step_handler(message, arrival_f)
 
                     def arrival_f(message):
-                        nonlocal filter_us
+                        global filter_us
                         filter_us.append(message.text)
                         bot.send_message(message.chat.id,'Когда планируете выехать?(Например,2023-09-13)')
                         bot.register_next_step_handler(message, departure_f)
 
                     def departure_f(message):
-                        nonlocal filter_us
+                        global filter_us
                         filter_us.append(message.text)
                         bot.send_message(message.chat.id,"Для вывода напишите что-нибудь")
                         bot.register_next_step_handler(message, user_find)
 
                     def user_find(message):
-                        nonlocal filter_us
+                        global filter_us
                         result_site,result_image = find_bed_geo.find_geo(latitude,longitude,filter_us)
                         tic = time.perf_counter()
                         for index, page in enumerate(result_site):
@@ -171,6 +183,7 @@ def choose_items(message):
                     start_filter(message)
                 else:
                     bot.send_message(message.chat.id,'Неправильно введены данные')
+                    bot.register_next_step_handler(message,welcom)
 
             geo(message)
 
@@ -178,8 +191,29 @@ def choose_items(message):
 
 
         elif message.text == "🤓История запросов🤓":
-            import sqlite3
-            bot = config.token
+            async def hist_cmd(message):
+                info = await hist()
+                bot.send_message(message.chat.id,"Город")
+                bot.send_message(message.chat.id,info[0])
+
+                bot.send_message(message.chat.id,"Дата заезда")
+                bot.send_message(message.chat.id,info[1])
+
+                bot.send_message(message.chat.id,"Дата выезда")
+                bot.send_message(message.chat.id,info[2])
+
+                bot.send_message(message.chat.id,"Дата кол-во гостей")
+                bot.send_message(message.chat.id,info[3])
+
+                bot.send_message(message.chat.id,"Кол-во постов")
+                bot.send_message(message.chat.id,info[4])
+
+
+            bot.send_message(message.chat.id, "Вывожу историю запросов")
+            asyncio.run(hist_cmd(message))
+
+
+
 
         elif message.text == "❓Помощь❓":
             bot.send_message(message.chat.id, "Сведения о командах\n"
